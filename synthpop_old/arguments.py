@@ -23,9 +23,9 @@ smoothing = None
 # smoothing = {'capital-gain': 'density',
 #              'workclass': None}
 
-# cont_na = None
+cont_na = None
 # cont_na = {'workclass': ['?']}
-cont_na = {'age': [36, 38]}
+# cont_na = {'age': [36, 38]}
 
 numtocat = None
 # numtocat = ['educational-num']
