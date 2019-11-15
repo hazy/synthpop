@@ -21,7 +21,7 @@ for col, visit_step in visit_sequence.sort_values().iteritems():
 
     elif method[col] in na_methods:
         col_predictors = predictor_matrix_columns[predictor_matrix.loc[col].to_numpy() != 0]
-        X = df[col_predictors]
+        X = synth_df[col_predictors]
 
         synth_df[col] = col_method.predict(X)
 
