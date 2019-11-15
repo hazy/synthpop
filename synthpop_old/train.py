@@ -5,6 +5,8 @@ from methods import SampleMethod, CARTMethod, NormMethod, NormRankMethod, Polyre
 from preprocess import df, columns, dtypes, processing_numtocat_dict, processing_nan_dict, cont_na, numtocat, catgroups
 from arguments import method, visit_sequence, proper, smoothing
 
+print(df.head())
+print(processing_nan_dict)
 
 # built under the hoood variables
 seed = 13
@@ -84,6 +86,9 @@ elif isinstance(smoothing, str):
 else:
     assert all([(smoothing_method == 'density' and dtypes[col] in ['int', 'float', 'datetime']) or smoothing_method is None for col, smoothing_method in smoothing.items()])
     smoothing = {col: (smoothing.get(col, None) == 'density' and dtypes[col] in ['int', 'float', 'datetime']) for col in columns}
+
+
+
 
 
 # adjust method, visit_sequence, predictor_matrix and smoothing according to cont_na and processing_nan_dict
