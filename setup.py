@@ -9,7 +9,7 @@ with open("VERSION", "r") as f:
 setup(
     name="synthpop",
     version=version,
-    author="Georgi Ganev, Sofiane Mahiou, Peter Juritz",
+    author="Georgi Ganev, Sofiane Mahiou",
     author_email="info@hazy.com",
     description="synthpop",
     long_description=long_description,

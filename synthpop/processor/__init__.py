@@ -1,2 +1,2 @@
 from synthpop.processor.processor import Processor
-from synthpop.processor.processor import NAN_DICT, NUMTOCAT_DICT
+from synthpop.processor.processor import NAN_KEY, NUMTOCAT_KEY

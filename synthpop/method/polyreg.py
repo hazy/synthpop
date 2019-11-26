@@ -7,7 +7,7 @@ from synthpop import CAT_COLS_DTYPES
 
 
 class PolyregMethod(Method):
-    def __init__(self, dtype, proper=False, random_state=None):
+    def __init__(self, dtype, proper=False, random_state=None, *args, **kwargs):
         self.dtype = dtype
         self.proper = proper
         self.random_state = random_state
@@ -18,16 +18,16 @@ class PolyregMethod(Method):
 
     def fit(self, X_df, y_df):
         if self.proper:
-            X_df, y_df = proper(X_df, y_df, random_state=self.random_state)
+            X_df, y_df = proper(X_df=X_df, y_df=y_df, random_state=self.random_state)
 
-        X_df = self.prepare_X_df(X_df, normalise_num_cols=True, one_hot_cat_cols=True)
+        X_df, y_df = self.prepare_dfs(X_df=X_df, y_df=y_df, normalise_num_cols=True, one_hot_cat_cols=True)
 
         X = X_df.to_numpy()
         y = y_df.to_numpy()
         self.polyreg.fit(X, y)
 
     def predict(self, X_test_df):
-        X_test_df = self.prepare_X_df(X_test_df, normalise_num_cols=True, one_hot_cat_cols=True, fit=False)
+        X_test_df, _ = self.prepare_dfs(X_df=X_test_df, normalise_num_cols=True, one_hot_cat_cols=True, fit=False)
         n_test_rows = len(X_test_df)
 
         X_test = X_test_df.to_numpy()
