@@ -4,11 +4,10 @@ import pandas as pd
 # classes
 from synthpop.validator import Validator
 from synthpop.processor import Processor
-from synthpop.method import SampleMethod, CARTMethod, NormMethod, NormRankMethod, PolyregMethod
 # global variables
-from synthpop.processor import NAN_DICT
-from synthpop.method import SAMPLE_METHOD, CART_METHOD, NORM_METHOD, NORMRANK_METHOD, POLYREG_METHOD
-from synthpop.method import NA_METHODS
+from synthpop import NUM_COLS_DTYPES
+from synthpop.processor import NAN_KEY
+from synthpop.method import CART_METHOD, METHODS_MAP, NA_METHODS
 
 
 class Synthpop:
@@ -18,14 +17,16 @@ class Synthpop:
                  # predictor_matrix=None,
                  proper=False,
                  cont_na=None,
-                 smoothing=None,
-                 default_method=None,
+                 smoothing=False,
+                 default_method=CART_METHOD,
                  numtocat=None,
                  catgroups=None,
                  seed=None):
+        # initialise the validator and processor
         self.validator = Validator(self)
         self.processor = Processor(self)
 
+        # initialise arguments
         self.method = method
         self.visit_sequence = visit_sequence
         self.predictor_matrix = None
@@ -37,13 +38,16 @@ class Synthpop:
         self.catgroups = catgroups
         self.seed = seed
 
+        # check init
         self.validator.check_init()
 
     def fit(self, df, dtypes=None):
         # TODO check df and check/EXTRACT dtypes
+        # - all column names of df are unique
+        # - all columns data of df are consistent
         # - all dtypes of df are correct ('int', 'float', 'datetime', 'category', 'bool'; no object)
         # - can map dtypes (if given) correctly to df
-        # should create map col: dtype for future use (self.df_dtypes)
+        # should create map col: dtype (self.df_dtypes)
 
         self.df_columns = df.columns.tolist()
         self.n_df_rows, self.n_df_columns = np.shape(df)
@@ -58,7 +62,7 @@ class Synthpop:
 
         # check fit
         self.validator.check_fit()
-        # fitting
+        # fit
         self._fit(processed_df)
 
     def _fit(self, df):
@@ -69,43 +73,11 @@ class Synthpop:
         for col, visit_step in self.visit_sequence.sort_values().iteritems():
             print('train_{}'.format(col))
 
-            # TODO move that big block of code in a functiom with a map
-            # TODO maybe normalise data before fitting and predicting
             # initialise the method
-            if self.method[col] == SAMPLE_METHOD:
-                col_method = SampleMethod(self.df_dtypes[col], smoothing=self.smoothing[col], proper=self.proper, random_state=self.seed)
-
-            elif self.method[col] == CART_METHOD:
-                col_method = CARTMethod(self.df_dtypes[col], smoothing=self.smoothing[col], proper=self.proper, random_state=self.seed)
-
-            elif self.method[col] == NORM_METHOD:
-                col_method = NormMethod(self.df_dtypes[col], smoothing=self.smoothing[col], proper=self.proper, random_state=self.seed)
-
-            elif self.method[col] == NORMRANK_METHOD:
-                col_method = NormRankMethod(self.df_dtypes[col], smoothing=self.smoothing[col], proper=self.proper, random_state=self.seed)
-
-            elif self.method[col] == POLYREG_METHOD:
-                col_method = PolyregMethod(self.df_dtypes[col], proper=self.proper, random_state=self.seed)
-
-            # extract the relevant data and fit the method
-            if self.method[col] == SAMPLE_METHOD:
-                x = df[col]
-
-                col_method.fit(x)
-
-            elif self.method[col] in NA_METHODS:
-                col_predictors = self.predictor_matrix_columns[self.predictor_matrix.loc[col].to_numpy() != 0]
-                X = df[col_predictors]
-                y = df[col]
-
-                # extract the non nan values and only use them for fitting the method
-                if col in self.cont_na:
-                    not_nan_indices = df[self.processor.processing_dict[NAN_DICT][col]['col_nan_name']] == 0
-                    X = X.loc[not_nan_indices]
-                    y = y.loc[not_nan_indices]
-
-                col_method.fit(X, y)
-
+            col_method = METHODS_MAP[self.method[col]](dtype=self.df_dtypes[col], smoothing=self.smoothing[col], proper=self.proper, random_state=self.seed)
+            # fit the method
+            col_predictors = self.predictor_matrix_columns[self.predictor_matrix.loc[col].to_numpy() == 1]
+            col_method.fit(X_df=df[col_predictors], y_df=df[col])
             # save the method
             self.saved_methods[col] = col_method
 
@@ -114,7 +86,7 @@ class Synthpop:
 
         # check generate
         self.validator.check_generate()
-        # generating
+        # generate
         synth_df = self._generate()
         # postprocess
         processed_synth_df = self.processor.postprocess(synth_df)
@@ -122,37 +94,24 @@ class Synthpop:
         return processed_synth_df
 
     def _generate(self):
-        synth_df = pd.DataFrame(columns=self.visit_sequence.index)
-        for col in synth_df.columns:
-            synth_df[col] = pd.Series(dtype=self.df_dtypes[col])
+        synth_df = pd.DataFrame(data=np.zeros([self.k, len(self.visit_sequence)]), columns=self.visit_sequence.index)
 
         for col, visit_step in self.visit_sequence.sort_values().iteritems():
             print('generate_{}'.format(col))
 
             # reload the method
             col_method = self.saved_methods[col]
+            # predict with the method
+            col_predictors = self.predictor_matrix_columns[self.predictor_matrix.loc[col].to_numpy() == 1]
+            synth_df[col] = col_method.predict(synth_df[col_predictors])
 
-            # extract the relevant data and use the method to predict
-            if self.method[col] == SAMPLE_METHOD:
-                synth_df[col] = col_method.predict(self.k)
+            # change all missing values to 0
+            if col in self.processor.processing_dict[NAN_KEY] and self.df_dtypes[col] in NUM_COLS_DTYPES and self.method[col] in NA_METHODS:
+                nan_indices = synth_df[self.processor.processing_dict[NAN_KEY][col]['col_nan_name']] != 0
+                synth_df.loc[nan_indices, col] = 0
 
-            elif self.method[col] in NA_METHODS:
-                col_predictors = self.predictor_matrix_columns[self.predictor_matrix.loc[col].to_numpy() != 0]
-                X = synth_df[col_predictors]
-
-                synth_df[col] = col_method.predict(X)
-
-                # change all missing values to 0
-                if col in self.cont_na:
-                    nan_indices = synth_df[self.processor.processing_dict[NAN_DICT][col]['col_nan_name']] != 0
-                    synth_df.loc[nan_indices, col] = 0
-
-            synth_df[col] = synth_df[col].astype(self.df_dtypes[col])
+            # map dtype to original dtype (only excpetion if column is full of NaNs)
+            if synth_df[col].notna().any():
+                synth_df[col] = synth_df[col].astype(self.df_dtypes[col])
 
         return synth_df
-
-    def save(self):
-        pass
-
-    def load(self):
-        pass

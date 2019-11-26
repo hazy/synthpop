@@ -6,21 +6,23 @@ from synthpop import NUM_COLS_DTYPES
 
 
 class SampleMethod(Method):
-    def __init__(self, dtype, smoothing=False, proper=False, random_state=None):
+    def __init__(self, dtype, smoothing=False, proper=False, random_state=None, *args, **kwargs):
         self.dtype = dtype
         self.smoothing = smoothing
         self.proper = proper
         self.random_state = random_state
 
-    def fit(self, x_df):
+    def fit(self, y_df=None, *args, **kwargs):
         if self.proper:
-            x_df = proper(x_df)
+            y_df = proper(y_df=y_df)
         if self.dtype in NUM_COLS_DTYPES:
-            self.x_real_min, self.x_real_max = np.min(x_df), np.max(x_df)
+            self.x_real_min, self.x_real_max = np.min(y_df), np.max(y_df)
 
-        self.values = x_df.to_numpy()
+        self.values = y_df.to_numpy()
 
-    def predict(self, n):
+    def predict(self, X_test_df):
+        n = X_test_df.shape[0]
+
         y_pred = np.random.choice(self.values, size=n, replace=True)
 
         if self.smoothing and self.dtype in NUM_COLS_DTYPES:

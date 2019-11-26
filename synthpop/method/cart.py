@@ -8,7 +8,7 @@ from synthpop import NUM_COLS_DTYPES, CAT_COLS_DTYPES
 
 
 class CARTMethod(Method):
-    def __init__(self, dtype, smoothing=False, proper=False, minibucket=5, random_state=None):
+    def __init__(self, dtype, smoothing=False, proper=False, minibucket=5, random_state=None, *args, **kwargs):
         self.dtype = dtype
         self.smoothing = smoothing
         self.proper = proper
@@ -22,9 +22,9 @@ class CARTMethod(Method):
 
     def fit(self, X_df, y_df):
         if self.proper:
-            X_df, y_df = proper(X_df, y_df, random_state=self.random_state)
+            X_df, y_df = proper(X_df=X_df, y_df=y_df, random_state=self.random_state)
 
-        X_df = self.prepare_X_df(X_df, normalise_num_cols=False, one_hot_cat_cols=True)
+        X_df, y_df = self.prepare_dfs(X_df=X_df, y_df=y_df, normalise_num_cols=False, one_hot_cat_cols=True)
         if self.dtype in NUM_COLS_DTYPES:
             self.y_real_min, self.y_real_max = np.min(y_df), np.max(y_df)
 
@@ -38,7 +38,7 @@ class CARTMethod(Method):
         self.leaves_y_dict = leaves_y_df.groupby('leaves').apply(lambda x: x.to_numpy()[:, -1]).to_dict()
 
     def predict(self, X_test_df):
-        X_test_df = self.prepare_X_df(X_test_df, normalise_num_cols=False, one_hot_cat_cols=True, fit=False)
+        X_test_df, _ = self.prepare_dfs(X_df=X_test_df, normalise_num_cols=False, one_hot_cat_cols=True, fit=False)
 
         # predict the leaves and for each leaf randomly sample from the observed values
         X_test = X_test_df.to_numpy()

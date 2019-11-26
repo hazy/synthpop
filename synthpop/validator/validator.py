@@ -3,10 +3,10 @@ import pandas as pd
 
 # global variables
 from synthpop import NUM_COLS_DTYPES
-from synthpop.method import CART_METHOD, SAMPLE_METHOD
-from synthpop.method import DEFAULT_METHODS_MAP, INIT_METHODS_MAP, CONT_NA_METHODS_MAP
+from synthpop.method import EMPTY_METHOD, SAMPLE_METHOD
+from synthpop.method import DEFAULT_METHODS_MAP, INIT_METHODS_MAP, CONT_TO_CAT_METHODS_MAP
 from synthpop.method import ALL_METHODS, INIT_METHODS, DEFAULT_METHODS, NA_METHODS
-from synthpop.processor import NAN_DICT
+from synthpop.processor import NAN_KEY
 
 
 INIT_STEP = 'init'
@@ -20,15 +20,15 @@ DENSITY = 'density'
 
 
 class Validator:
-    def __init__(self, synthpop_instance):
-        self.spop = synthpop_instance
+    def __init__(self, spop):
+        self.spop = spop
         self.attributes_types = {'method': (NONE_TYPE, str, list),
                                  'visit_sequence': (NONE_TYPE, np.ndarray, list),
-                                 'predictor_matrix': (NONE_TYPE),
-                                 'proper': (bool),
+                                 # 'predictor_matrix': (NONE_TYPE,),
+                                 'proper': (bool,),
                                  'cont_na': (NONE_TYPE, dict),
-                                 'smoothing': (NONE_TYPE, str, dict),
-                                 'default_method': (NONE_TYPE, str),
+                                 'smoothing': (bool, str, dict),
+                                 'default_method': (str,),
                                  'numtocat': (NONE_TYPE, list),
                                  'catgroups': (NONE_TYPE, int, dict),
                                  'seed': (NONE_TYPE, int),
@@ -40,7 +40,7 @@ class Validator:
         self.default_method_validator(step=step)
         self.method_validator(step=step)
         self.visit_sequence_validator(step=step)
-        self.predictor_matrix_validator(step=step)
+        # self.predictor_matrix_validator(step=step)
         self.proper_validator(step=step)
         self.cont_na_validator(step=step)
         self.smoothing_validator(step=step)
@@ -51,8 +51,8 @@ class Validator:
     def check_processor(self):
         step = PROCESSOR_STEP
 
-        self.method_validator(step=step)
         self.visit_sequence_validator(step=step)
+        self.method_validator(step=step)
         self.predictor_matrix_validator(step=step)
         self.smoothing_validator(step=step)
 
@@ -91,38 +91,50 @@ class Validator:
                 # validate method is in allowed init methods
                 assert self.spop.method in INIT_METHODS
 
-            if isinstance(method_type, list):
+            elif isinstance(method_type, list):
                 # if method type is list
                 # validate all methods are allowed
                 assert all(m in ALL_METHODS for m in self.spop.method)
-                # validate sample method is one of them
-                assert SAMPLE_METHOD in self.spop.method
 
         if step == PROCESSOR_STEP:
+            first_visited_col = self.spop.visit_sequence.index[self.spop.visit_sequence == 0].values[0]
+
             if self.spop.method is None:
                 # if method is not specified
-                # for each column set method to default method according to its dtype
-                self.spop.method = [DEFAULT_METHODS_MAP[self.spop.default_method][self.spop.df_dtypes[col]] for col in self.spop.df_columns]
+                # for each column set method to default method according to its dtype (method for first visited column is sample_method)
+                self.spop.method = [DEFAULT_METHODS_MAP[self.spop.default_method][self.spop.df_dtypes[col]] if col != first_visited_col else SAMPLE_METHOD
+                                    for col in self.spop.df_columns]
 
             elif isinstance(self.spop.method, str):
                 # if method type is str
-                # for each column set method to the corresponding allowed method according to its dtype
-                self.spop.method = [INIT_METHODS_MAP[self.spop.method][self.spop.df_dtypes[col]] for col in self.spop.df_columns]
+                # for each column set method to the corresponding allowed method according to its dtype (method for first visited column is sample_method)
+                self.spop.method = [INIT_METHODS_MAP[self.spop.method][self.spop.df_dtypes[col]] if col != first_visited_col else SAMPLE_METHOD
+                                    for col in self.spop.df_columns]
+
+            else:
+                # validate method for first visited column with non empty method is sample_method
+                for col, visit_order in self.spop.visit_sequence.sort_values().iteritems():
+                    col_method = self.spop.method[self.spop.df_columns.index(col)]
+                    if col_method != EMPTY_METHOD:
+                        assert col_method == SAMPLE_METHOD
+                        break
+                # assert all(self.spop.method[i] == SAMPLE_METHOD for i, col in enumerate(self.spop.df_columns) if col == first_visited_col)
+
             # validate all columns have specified methods
             assert len(self.spop.method) == self.spop.n_df_columns
             self.spop.method = pd.Series(self.spop.method, index=self.spop.df_columns)
 
         if step == FIT_STEP:
             for col in self.spop.method.index:
-                if col in self.spop.cont_na and self.spop.method[col] in NA_METHODS:
+                if col in self.spop.numtocat:
+                    self.spop.method[col] = CONT_TO_CAT_METHODS_MAP[self.spop.method[col]]
+
+                elif col in self.spop.processor.processing_dict[NAN_KEY] and self.spop.df_dtypes[col] in NUM_COLS_DTYPES and self.spop.method[col] in NA_METHODS:
                     # TODO put in a function
                     nan_col_index = self.spop.method.index.get_loc(col)
                     index_list = self.spop.method.index.tolist()
                     index_list.insert(nan_col_index, self.spop.processed_df_columns[nan_col_index])
-                    self.spop.method = self.spop.method.reindex(index_list, fill_value=CONT_NA_METHODS_MAP[self.spop.method[col]])
-
-            for col in self.spop.numtocat:
-                self.spop.method[col] = CONT_NA_METHODS_MAP[self.spop.method[col]]
+                    self.spop.method = self.spop.method.reindex(index_list, fill_value=CONT_TO_CAT_METHODS_MAP[self.spop.method[col]])
 
     def visit_sequence_validator(self, step=None):
         if step == INIT_STEP:
@@ -161,12 +173,9 @@ class Validator:
             self.spop.visited_columns = [col for col in self.spop.df_columns if col in self.spop.visit_sequence]
             self.spop.visit_sequence = pd.Series([self.spop.visit_sequence.index(col) for col in self.spop.visited_columns], index=self.spop.visited_columns)
 
-            # transform the method for first visited colum in visit_sequence to sample_method
-            self.spop.method[self.spop.visit_sequence.index[self.spop.visit_sequence == 0].tolist()] = SAMPLE_METHOD
-
         if step == FIT_STEP:
             for col in self.spop.visit_sequence.index:
-                if col in self.spop.cont_na and self.spop.method[col] in NA_METHODS:
+                if col in self.spop.processor.processing_dict[NAN_KEY] and self.spop.df_dtypes[col] in NUM_COLS_DTYPES and self.spop.method[col] in NA_METHODS:
                     visit_step = self.spop.visit_sequence[col]
                     self.spop.visit_sequence.loc[self.spop.visit_sequence >= visit_step] += 1
 
@@ -176,9 +185,9 @@ class Validator:
                     self.spop.visit_sequence = self.spop.visit_sequence.reindex(index_list, fill_value=visit_step)
 
     def predictor_matrix_validator(self, step=None):
-        if step == INIT_STEP:
-            # validate predictor_matrix type is allowed
-            self.check_valid_type('predictor_matrix')
+        # if step == INIT_STEP:
+        #     # validate predictor_matrix type is allowed
+        #     self.check_valid_type('predictor_matrix')
 
         if step == PROCESSOR_STEP:
             # build predictor_matrix so all previously visited columns are used for the prediction of the currently visited
@@ -191,7 +200,7 @@ class Validator:
 
         if step == FIT_STEP:
             for col in self.spop.predictor_matrix:
-                if col in self.spop.cont_na and self.spop.method[col] in NA_METHODS:
+                if col in self.spop.processor.processing_dict[NAN_KEY] and self.spop.df_dtypes[col] in NUM_COLS_DTYPES and self.spop.method[col] in NA_METHODS:
                     nan_col_index = self.spop.predictor_matrix.columns.get_loc(col)
                     self.spop.predictor_matrix.insert(nan_col_index, self.spop.processed_df_columns[nan_col_index], self.spop.predictor_matrix[col])
 
@@ -216,9 +225,9 @@ class Validator:
             if self.spop.cont_na is None:
                 self.spop.cont_na = {}
             else:
-                # assert all(col in self.spop.df_columns for col in self.spop.cont_na)
                 # validate columns in cont_na are valid columns
-                assert all(col in self.spop.visited_columns for col in self.spop.cont_na)
+                assert all(col in self.spop.df_columns for col in self.spop.cont_na)
+                # assert all(col in self.spop.visited_columns for col in self.spop.cont_na)
                 # validate the type of columns in cont_na are valid types
                 assert all(self.spop.df_dtypes[col] in NUM_COLS_DTYPES for col in self.spop.cont_na)
                 self.spop.cont_na = {col: col_cont_na for col, col_cont_na in self.spop.cont_na.items() if self.spop.method[col] in NA_METHODS}
@@ -229,7 +238,7 @@ class Validator:
             self.check_valid_type('smoothing')
 
         if step == PROCESSOR_STEP:
-            if self.spop.smoothing is None:
+            if self.spop.smoothing is False:
                 self.spop.smoothing = {col: False for col in self.spop.df_columns}
             elif isinstance(self.spop.smoothing, str):
                 # if smoothing type is str
@@ -237,30 +246,25 @@ class Validator:
                 assert self.spop.smoothing == DENSITY
                 self.spop.smoothing = {col: self.spop.df_dtypes[col] in NUM_COLS_DTYPES for col in self.spop.df_columns}
             else:
-                # validate smoothing is 'denisty' for some/all numerical columns and None for all other columns
-                assert all((smoothing_method == DENSITY and self.spop.df_dtypes[col] in NUM_COLS_DTYPES) or smoothing_method is None
+                # validate smoothing is 'denisty' for some/all numerical columns and False for all other columns
+                assert all((smoothing_method == DENSITY and self.spop.df_dtypes[col] in NUM_COLS_DTYPES) or smoothing_method is False
                            for col, smoothing_method in self.spop.smoothing.items())
-                self.spop.smoothing = {col: (self.spop.smoothing.get(col, None) == DENSITY and self.spop.df_dtypes[col] in NUM_COLS_DTYPES) for col in self.spop.df_columns}
+                self.spop.smoothing = {col: (self. spop.smoothing.get(col, False) == DENSITY and self.spop.df_dtypes[col] in NUM_COLS_DTYPES) for col in self.spop.df_columns}
 
         if step == FIT_STEP:
-            for col in self.spop.cont_na:
-                self.spop.smoothing[self.spop.processor.processing_dict[NAN_DICT][col]['col_nan_name']] = False
-
-            for col in self.spop.numtocat:
-                self.spop.smoothing[col] = False
+            for col in self.spop.processed_df_columns:
+                if col in self.spop.numtocat:
+                    self.spop.smoothing[col] = False
+                elif col in self.spop.processor.processing_dict[NAN_KEY] and self.spop.df_dtypes[col] in NUM_COLS_DTYPES:
+                    self.spop.smoothing[self.spop.processor.processing_dict[NAN_KEY][col]['col_nan_name']] = False
 
     def default_method_validator(self, step=None):
         if step == INIT_STEP:
             # validate default_method type is allowed
             self.check_valid_type('default_method')
 
-            if self.spop.default_method is None:
-                # if default_method is not specified
-                # set default_method to CART
-                self.spop.default_method = CART_METHOD
-            else:
-                # validate default_method is in allowed default methods
-                assert self.spop.default_method in DEFAULT_METHODS
+            # validate default_method is in allowed default methods
+            assert self.spop.default_method in DEFAULT_METHODS
 
     def numtocat_validator(self, step=None):
         if step == INIT_STEP:
@@ -271,9 +275,9 @@ class Validator:
             if self.spop.numtocat is None:
                 self.spop.numtocat = []
             else:
-                # assert all(col in self.spop.df_columns for col in self.spop.numtocat)
-                # validate all columns in numtocat are valid visited columns
-                assert all(col in self.spop.visited_columns for col in self.spop.numtocat)
+                # validate all columns in numtocat are valid columns
+                assert all(col in self.spop.df_columns for col in self.spop.numtocat)
+                # assert all(col in self.spop.visited_columns for col in self.spop.numtocat)
                 # validate all columns in numtocat are numerical columns
                 assert all(self.spop.df_dtypes[col] in NUM_COLS_DTYPES for col in self.spop.numtocat)
 
@@ -287,11 +291,11 @@ class Validator:
                 # validate catgroups is more than 1
                 assert self.spop.catgroups > 1
 
-            if isinstance(catgroups_type, dict):
+            elif isinstance(catgroups_type, dict):
                 # if catgroups type is dict
                 # validate the keys in catgroups are the same as the columns in numtocat
-                assert set(list(self.spop.catgroups.keys())) == set(self.spop.numtocat)
-                # validate all values in catgroups are int more than 1
+                assert set(self.spop.catgroups.keys()) == set(self.spop.numtocat)
+                # validate all values in catgroups are type int and more than 1
                 assert all((isinstance(col_groups, int) and col_groups > 1) for col_groups in self.spop.catgroups.values())
 
         if step == PROCESSOR_STEP:
