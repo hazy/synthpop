@@ -1,0 +1,16 @@
+{"age": "int",
+ "workclass": "category",
+ "fnlwgt": "int",
+ "education": "category",
+ "educational-num": "int",
+ "marital-status": "category",
+ "occupation": "category",
+ "relationship": "category",
+ "race": "category",
+ "gender": "category",
+ "capital-gain": "int",
+ "capital-loss": "int",
+ "hours-per-week": "int",
+ "native-country": "category",
+ "income": "category"
+}
