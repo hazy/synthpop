@@ -13,7 +13,7 @@ python setup.py install
 
 ## Examples
 
-### Adult dataset
+### [Adult dataset](datasets/README.md):
 ```
 In [1]: from datasets.adult import df
 
@@ -27,7 +27,7 @@ Out[2]:
 4   28            Private  338409   Bachelors               13   Married-civ-spouse      Prof-specialty            Wife   Black   Female             0             0              40            Cuba   <=50K
 ```
 
-### Synthpop
+### synthpop
 
 1. Default parameters for the Adult dataset.
 ```
