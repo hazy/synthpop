@@ -32,7 +32,7 @@ Out[2]:
 
 ### synthpop
 
-1. Default parameters for the Adult dataset.
+1. Default parameters for the Adult dataset:
 ```
 In [1]: from synthpop import Synthpop
 
@@ -141,7 +141,7 @@ native-country     1          1       1          1                1             
 income             1          1       1          1                1               1           1             1     1       1             1             1               1               1       0
 ```
 
-2. Visit sequence for the Adult dataset.
+2. Visit sequence for the Adult dataset:
 ```
 In [1]: from synthpop import Synthpop
 
