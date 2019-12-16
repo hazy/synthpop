@@ -224,4 +224,4 @@ marital-status    1          1       0          0               0
 
 
 ## License
-This project is being developed at [Hazy Limited](https://hazy.com) and is released under [MIT license](License.md).
+This project is being developed at [Hazy Limited](https://hazy.com) and is released under [MIT license](LICENSE).
