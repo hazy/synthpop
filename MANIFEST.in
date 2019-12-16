@@ -1,0 +1,9 @@
+include MANIFEST.in
+include *.md
+include setup.py
+include *.data
+include *.names
+include *.json
+include *.csv
+
+global-exclude *.pyc
