@@ -11,6 +11,9 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
+## [Project roadmap](ROADMAP.md)
+
+
 ## Examples
 
 ### [Adult dataset](datasets/README.md):
