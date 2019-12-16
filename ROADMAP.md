@@ -1,6 +1,6 @@
 # Synthpop - Roadmap
 
-This document describes the planned roadmap in no particular order.
+This document describes the planned roadmap in no particular order:
 
 1. Create better roadmap
 2. Add support for `predictor_matrix`
