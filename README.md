@@ -1,5 +1,5 @@
 # synthpop
-Python implementation of the R package synthpop
+Python implementation of the [R package synthpop](https://cran.r-project.org/web/packages/synthpop/index.html)
 
 
 ## Installation from sources
