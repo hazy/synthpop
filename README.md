@@ -9,8 +9,15 @@ This is a reimplementation in Python which allows synthetic data to be generated
 ### Development status and roadmap
 This project is in Alpha status and the roadmap can be found [here](https://github.com/hazy/synthpop/blob/master/ROADMAP.md).
 
+## Installation
 
-## Installation from sources
+### pip
+
+```bash
+pip install py-synthpop
+```
+
+### Source
 
 ```bash
 git clone git@github.com:hazy/synthpop.git
