@@ -7,7 +7,7 @@ This is a reimplementation in Python which allows synthetic data to be generated
 
 
 ### Development status and roadmap
-This project is in Alpha status and the roadmap can be found [here](ROADMAP.md).
+This project is in Alpha status and the roadmap can be found [here](https://github.com/hazy/synthpop/blob/master/ROADMAP.md).
 
 
 ## Installation from sources
@@ -23,7 +23,7 @@ python setup.py install
 
 
 ### Adult dataset
-We will use the [US adult census dataset](datasets/README.md), which is a freely available open dataset extracted from the US census bureau database. The dataset is initially designed for a binary classification problem and the task is to predict whether a person earns over $50,000 a year. The dataset is a mixture of discrete and continuous features, including age, working status (workclass), education, marital status, race, sex, relationship and hours worked per week.
+We will use the [US adult census dataset](https://github.com/hazy/synthpop/blob/master/datasets/README.md), which is a freely available open dataset extracted from the US census bureau database. The dataset is initially designed for a binary classification problem and the task is to predict whether a person earns over $50,000 a year. The dataset is a mixture of discrete and continuous features, including age, working status (workclass), education, marital status, race, sex, relationship and hours worked per week.
 
 
 ```Python
@@ -224,4 +224,4 @@ marital-status    1          1       0          0               0
 
 
 ## License
-This project is being developed at [Hazy Limited](https://hazy.com) and is released under [MIT license](LICENSE).
+This project is being developed at [Hazy Limited](https://hazy.com) and is released under [MIT license](https://github.com/hazy/synthpop/blob/master/LICENSE).
