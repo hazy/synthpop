@@ -7,11 +7,11 @@ with open("VERSION", "r") as f:
     version = f.read().strip()
 
 setup(
-    name="synthpop",
+    name="py-synthpop",
     version=version,
     author="Georgi Ganev, Sofiane Mahiou",
     author_email="info@hazy.com",
-    description="synthpop",
+    description="Python implementation of the R package synthpop",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/hazy/synthpop",
